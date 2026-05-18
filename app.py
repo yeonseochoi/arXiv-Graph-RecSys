@@ -6,239 +6,246 @@ import json
 
 # ── 페이지 기본 설정 ───────────────────────────────────────────
 st.set_page_config(
-    page_title="PaperLens · 논문 추천 시스템",
+    page_title="PaperLens · AI 논문 추천 시스템",
     page_icon="🔭",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-# ── Custom CSS (깔끔한 화이트 & 모던 스타일) ───────────────────────
+# ── 프리미엄 라이트 테마 CSS (Pretendard 기반) ───────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
 
-/* 전체 배경 화이트 톤 & 기본 폰트 */
+/* 전체 배경 및 폰트 세팅 */
 html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background-color: #f8f9fa;
-    color: #212529;
+    font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    background-color: #fcfcfd;
+    color: #2d3748;
 }
-.stApp { background-color: #f8f9fa; }
+.stApp { background-color: #fcfcfd; }
 
-/* 사이드바 (차분한 라이트 그레이) */
+/* 사이드바 디자인 (미니멀 화이트) */
 section[data-testid="stSidebar"] {
     background-color: #ffffff;
-    border-right: 1px solid #e9ecef;
+    border-right: 1px solid #f1f5f9;
+    box-shadow: 2px 0 12px rgba(0,0,0,0.01);
 }
-section[data-testid="stSidebar"] * { color: #495057 !important; }
+section[data-testid="stSidebar"] * { color: #475569 !important; }
 
-/* 헤더 */
+/* 대시보드 메인 타이틀 */
 .hero-title {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2.8rem;
-    letter-spacing: -0.5px;
-    background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    line-height: 1.15;
-    margin-bottom: 0.2rem;
-    font-weight: bold;
+    font-family: 'Pretendard', sans-serif;
+    font-weight: 800;
+    font-size: 2.4rem;
+    letter-spacing: -1px;
+    color: #1e3a8a;
+    line-height: 1.2;
+    margin-bottom: 0.3rem;
 }
 .hero-sub {
-    color: #6c757d;
+    color: #94a3b8;
     font-size: 0.95rem;
     font-weight: 400;
-    letter-spacing: 0.5px;
 }
 
-/* 모드 카드 */
 .mode-card {
     background: #ffffff;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 1.2rem;
-    margin-bottom: 0.7rem;
-    transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.4rem;
+    margin-bottom: 0.5rem;
+    
+    min-height: 170px;
+    
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.01), 0 2px 4px -1px rgba(0,0,0,0.01);
 }
 .mode-card:hover { 
     border-color: #3b82f6; 
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(59,130,246,0.08);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 20px -3px rgba(59,130,246,0.08);
 }
 .mode-card.active {
-    border-color: #1e3a8a;
-    background: #f0f4ff;
+    border-color: #2563eb;
+    background: #f8fafc;
+    box-shadow: 0 10px 15px -3px rgba(37,99,235,0.06);
 }
 .mode-badge {
     display: inline-block;
     font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 20px;
-    background: #e0e7ff;
-    color: #1e3a8a;
-    margin-bottom: 0.4rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 30px;
+    background: #eff6ff;
+    color: #2563eb;
+    margin-bottom: 0.5rem;
 }
 .mode-title {
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: #1f2937;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
 }
 .mode-desc {
-    font-size: 0.8rem;
-    color: #6b7280;
-    margin-top: 4px;
+    font-size: 0.82rem;
+    color: #64748b;
+    margin-top: 5px;
+    line-height: 1.4;
+    
+    min-height: 55px; 
 }
 
-/* 결과 카드 */
+/* 추천 결과 카드 (가장 예뻐야 하는 곳) */
 .result-card {
     background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 14px;
-    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 1.6rem;
     margin-bottom: 1.2rem;
     position: relative;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.01);
-    transition: all 0.2s;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    transition: all 0.2s ease;
 }
 .result-card:hover { 
-    border-color: #3b82f6; 
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.04);
-}
-.result-card::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #1e3a8a, #3b82f6);
+    border-color: #cbd5e1; 
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.04);
 }
 .rank-badge {
-    font-family: 'DM Serif Display', serif;
-    font-size: 2rem;
-    color: #3b82f622;
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #2563eb;
+    opacity: 0.15;
     position: absolute;
-    right: 1.5rem;
+    right: 1.6rem;
     top: 1.2rem;
-    font-weight: bold;
 }
 .paper-title {
-    font-size: 1.05rem;
-    font-weight: 600;
-    color: #111827;
-    line-height: 1.45;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.5;
     margin-bottom: 0.6rem;
     padding-right: 3rem;
 }
+.paper-title a {
+    color: #0f172a !important;
+    text-decoration: none !important;
+    transition: color 0.2s ease;
+}
+.paper-title a:hover {
+    color: #2563eb !important; 
+}
 .paper-meta {
     display: flex;
-    gap: 0.6rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
-    margin-bottom: 0.8rem;
+    margin-bottom: 0.9rem;
 }
 .meta-chip {
-    font-size: 0.72rem;
-    background: #f3f4f6;
-    border: 1px solid #e5e7eb;
-    border-radius: 20px;
-    padding: 3px 12px;
-    color: #4b5563;
+    font-size: 0.75rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 30px;
+    padding: 4px 12px;
+    color: #475569;
     font-weight: 500;
 }
 .meta-chip.gold {
-    border-color: #bfdbfe;
-    color: #1e3a8a;
+    border-color: #93c5fd;
+    color: #1d4ed8;
     background: #eff6ff;
+    font-weight: 600;
 }
 .reason-box {
-    background: #f9fafb;
-    border-left: 3px solid #3b82f6;
-    border-radius: 0 8px 8px 0;
-    padding: 0.75rem 1rem;
-    font-size: 0.85rem;
-    color: #374151;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #2563eb;
+    border-radius: 4px 12px 12px 4px;
+    padding: 0.9rem 1.1rem;
+    font-size: 0.88rem;
+    color: #334155;
     line-height: 1.6;
 }
 .reason-label {
-    font-size: 0.7rem;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    font-size: 0.75rem;
     color: #2563eb;
-    font-weight: 600;
+    font-weight: 700;
     margin-bottom: 4px;
 }
 
-/* 입력 필드 */
+/* 입력 위젯 스타일 */
 div[data-testid="stTextInput"] input,
 div[data-testid="stTextArea"] textarea {
     background: #ffffff !important;
-    border: 1px solid #d1d5db !important;
-    border-radius: 8px !important;
-    color: #1f2937 !important;
+    border: 1px solid #cbd5e1 !important;
+    border-radius: 10px !important;
+    color: #1e293b !important;
+    font-size: 0.92rem !important;
 }
 div[data-testid="stTextInput"] input:focus,
 div[data-testid="stTextArea"] textarea:focus {
-    border-color: #3b82f6 !important;
-    box-shadow: 0 0 0 2px #3b82f622 !important;
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
 }
 
-/* 실행 버튼 */
+/* 메인 실행 버튼 */
 div[data-testid="stButton"] > button {
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6) !important;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
     color: #ffffff !important;
-    font-weight: 600 !important;
-    border-radius: 8px !important;
-    padding: 0.6rem 2rem !important;
-    box-shadow: 0 4px 6px rgba(30,58,138,0.15) !important;
-    width: 100% !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    border-radius: 10px !important;
+    padding: 0.75rem 2rem !important;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.2) !important;
+    border: none !important;
+    transition: all 0.2s !important;
 }
 div[data-testid="stButton"] > button:hover {
-    opacity: 0.95 !important;
     transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(37,99,235,0.3) !important;
 }
 
-/* [개선] 구린 기본 디자인의 로딩 스피너 및 사이드바 에러 스타일 커스텀 오버라이드 */
+/* 은은하고 세련된 사이드바 로딩창 매핑 */
 div[data-testid="stSidebar"] [data-testid="stAlert"], 
 div[data-testid="stSidebar"] .stSpinner {
-    background-color: #f0f4ff !important;
-    border: 1px solid #bfdbfe !important;
-    color: #1e3a8a !important;
-    border-radius: 10px !important;
+    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #475569 !important;
+    border-radius: 12px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.01) !important;
 }
 div[data-testid="stSidebar"] .stSpinner > div {
-    border-top-color: #1e3a8a !important;
+    border-top-color: #2563eb !important;
 }
 
-/* 안내 배너 */
+/* 안내판 배너 */
 .info-banner {
-    background: #f0f4ff;
-    border: 1px solid #bfdbfe;
-    border-radius: 10px;
-    padding: 0.8rem 1.1rem;
-    font-size: 0.85rem;
-    color: #1e3a8a;
-    margin-bottom: 1.2rem;
+    background: #f0fdf4;
+    border: 1px solid #bbf7d0;
+    border-radius: 12px;
+    padding: 0.9rem 1.2rem;
+    font-size: 0.88rem;
+    color: #166534;
+    margin-bottom: 1.5rem;
 }
-.info-banner b { color: #1d4ed8; font-weight: 600; }
+.info-banner b { color: #15803d; font-weight: 700; }
 
 .section-label {
-    font-size: 0.75rem;
-    letter-spacing: 1.2px;
-    text-transform: uppercase;
-    color: #1e3a8a;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+    color: #475569;
     font-weight: 700;
     margin-bottom: 0.6rem;
+    text-transform: uppercase;
 }
 
-hr.gold { border-color: #e5e7eb; }
+hr.gold { border-color: #f1f5f9; }
 </style>
 """, unsafe_allow_html=True)
 
 
 # ── 데이터 & 모델 로드 (캐시) ──────────────────────────────────
-@st.cache_resource(show_spinner="시스템 자원 및 모델 아티팩트 로딩 중...")
+@st.cache_resource(show_spinner="시스템 리소스 및 추천 모델을 불러오는 중...")
 def load_system():
     import faiss
     import torch
@@ -252,11 +259,8 @@ def load_system():
     if not gemini_key:
         raise EnvironmentError(".env 파일에 GEMINI_API_KEY가 세팅되어 있지 않습니다.")
     
-    # 최신 google-genai 클라이언트 초기화
     genai.configure(api_key=gemini_key)
-    client = None
 
-    # [수정] 가장 바깥쪽 data/ 폴더 내부를 정확히 지리하도록 경로 세팅 보완
     PAPER_MAP_PATH   = "data/paper_id_map.csv"
     PAPER_EMB_PATH   = "data/paper_embeddings.npy"
     FAISS_INDEX_PATH = "data/papers_faiss.index"
@@ -320,7 +324,7 @@ def load_system():
         faiss_index=faiss_index, encoder=encoder,
         two_tower=model, user_to_idx=user_to_idx, emb_dim=emb_dim,
         user_profiles=user_profiles, user_list=user_list,
-        client_llm=client, DEVICE=DEVICE,
+        DEVICE=DEVICE,
     )
 
 
@@ -329,7 +333,7 @@ def run_recommend(sys, user_id, input_type, user_query, seed_title, seed_abstrac
                   query_text, candidate_k, final_k, alpha, beta,
                   semantic_weight, two_tower_weight, lambda_val):
     import torch
-    from google.genai import types
+    import google.generativeai as genai
 
     def build_text(t, a):
         t = "" if pd.isna(t) else str(t).strip()
@@ -353,19 +357,19 @@ def run_recommend(sys, user_id, input_type, user_query, seed_title, seed_abstrac
             if len(res) == top_k: break
         return pd.DataFrame(res)
 
-    # 1. Candidate Retrieval (FAISS)
+    # 1. 후보군 추출 (FAISS)
     if input_type == "seed":
         cands = search(encode(build_text(seed_title, seed_abstract)), candidate_k)
     elif input_type == "query":
         cands = search(encode(query_text), candidate_k)
-    else:  # seed_query 혼합 탐색
+    else:  
         sv = encode(build_text(seed_title, seed_abstract))
         qv = encode(query_text)
         fv = alpha * qv + beta * sv
         fv = (fv / (np.linalg.norm(fv, axis=1, keepdims=True) + 1e-8)).astype("float32")
         cands = search(fv, candidate_k)
 
-    # 2. Deep Scoring (Two-Tower Model Inference)
+    # 2. 모델 기반 취향 스코어링 (Two-Tower 모델 순전파)
     uid_str = str(user_id)
     uid_idx = sys["user_to_idx"][uid_str]
     profile = sys["user_profiles"][uid_str]
@@ -386,7 +390,7 @@ def run_recommend(sys, user_id, input_type, user_query, seed_title, seed_abstrac
             all_scores.extend(scores.cpu().numpy().tolist())
     cands["two_tower_score"] = all_scores
 
-    # 3. Late Fusion Ranking
+    # 3. 랭킹 통합 (Late Fusion)
     def mnorm(x):
         x = np.asarray(x, dtype=np.float32)
         mn, mx = x.min(), x.max()
@@ -397,7 +401,7 @@ def run_recommend(sys, user_id, input_type, user_query, seed_title, seed_abstrac
     cands["final_score"] = (semantic_weight/t) * cands["sem_n"] + (two_tower_weight/t) * cands["tt_n"]
     cands = cands.sort_values("final_score", ascending=False).reset_index(drop=True)
 
-    # 4. Recency-aware Time Decay
+    # 4. 시간 경과 감쇠 (최신성 반영)
     cands["update_date"] = pd.to_datetime(cands["update_date"], errors="coerce")
     cur = pd.Timestamp.now()
     cands["months_passed"] = ((cur.year - cands["update_date"].dt.year) * 12 + (cur.month - cands["update_date"].dt.month)).clip(lower=0)
@@ -405,10 +409,10 @@ def run_recommend(sys, user_id, input_type, user_query, seed_title, seed_abstrac
     cands["time_adjusted_score"] = cands["final_score"] * cands["time_penalty"]
     cands = cands.sort_values("time_adjusted_score", ascending=False).reset_index(drop=True)
 
-    # 5. LLM User Agent Personalized Reranking (Gemini 3 Flash Image 표준 모델인 최신 플래시 탑재)
-    client = sys["client_llm"]
+    # 5. 생성형 LLM 재정렬 및 추천 사유 생성 (Gemini 2.5 Flash 고정)
+    model_llm = genai.GenerativeModel("gemini-2.5-flash")
     papers_info = ""
-    for _, row in cands.head(20).iterrows():
+    for _, row in cands.head(50).iterrows():
         papers_info += f"[Paper ID: {row['paper_id']}]\nTitle: {row['title']}\nUpdate Date: {row['update_date']}\n---\n"
 
     prompt = f"""You are an AI Research Assistant. The user wants papers about: "{user_query or query_text or seed_title}"
@@ -418,16 +422,14 @@ Here is a list of top candidate papers ranked by our internal system:
 
 Select the Top {final_k} papers that best match the user's intent.
 Provide a brief 1-sentence reason WHY each paper is recommended.
+The reason MUST be written in Korean politely.
 
-Output STRICTLY as a valid JSON array:
-[{{"paper_id": "1234.5678", "reason": "..."}}]
-"""
+You MUST output the result strictly as a valid JSON array like this:
+[{{"paper_id": "1234.5678", "reason": "이 논문은 유저가 찾는 ~ 주제와 밀접하게 연관되어 있어 추천합니다."}}]"""
     try:
-        # 최신 google-genai 라이브러리 인터페이스 규격 매핑
-        resp = client.models.generate_content(
-            model="gemini-2.5-flash", 
-            contents=prompt,
-            config=types.GenerateContentConfig(
+        resp = model_llm.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
                 response_mime_type="application/json", 
                 temperature=0.3
             )
@@ -447,20 +449,19 @@ Output STRICTLY as a valid JSON array:
                     "time_adjusted_score": r["time_adjusted_score"],
                 })
         
-        # 완벽한 붕괴 방지용 가드 클로즈 결합
         if not results:
             fallback_df = cands.head(final_k).copy()
             fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
-            fallback_df["reason"] = "LLM 정렬 매칭 실패로 순수 통합 랭킹 점수 결과만 유지합니다."
+            fallback_df["reason"] = "통합 시스템 점수 기반 정렬 결과입니다."
             return fallback_df
             
         return pd.DataFrame(results).head(final_k)
         
     except Exception as e:
-        st.warning(f"LLM 구조화 파싱/호출 오류: {e}. 시스템 백오프 기반 기존 스코어로 대체합니다.")
+        st.warning(f"AI 재정렬 프로세스 일시 지연: {e}")
         fallback_df = cands.head(final_k).copy()
         fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
-        fallback_df["reason"] = "API 게이트웨이 지연 오류로 인해 하이브리드 통합 점수 상위권을 대체 반환합니다."
+        fallback_df["reason"] = "네트워크 지연으로 인해 시스템 알고리즘 추천 스코어 기반으로 제공합니다."
         return fallback_df
 
 
@@ -468,90 +469,92 @@ Output STRICTLY as a valid JSON array:
 #  UI 레이아웃 구현 및 렌더링
 # ══════════════════════════════════════════════
 
-# ── 상단 헤더 ──────────────────────────────────
+# ── 대시보드 상단 헤더 ─────────────────────────────
 st.markdown("""
-<div style="padding: 2rem 0 1rem;">
+<div style="padding: 1.2rem 0 0.8rem;">
   <div class="hero-title">🔭 PaperLens</div>
-  <div class="hero-sub">AI-Powered Academic Paper Recommendation Engine</div>
+  <div class="hero-sub">나만을 위한 초개인화 학술 논문 추천 시스템</div>
 </div>
 <hr class="gold">
 """, unsafe_allow_html=True)
 
-# ── 사이드바 관제탑 패널 ─────────────────────────
+# ── 사이드바 제어판 (사용자 친화적 단어로 전면 수정) ──────────────────
 with st.sidebar:
-    st.markdown('<div class="section-label">⚙ 시스템 제어판</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label">👤 추천 대상 설정</div>', unsafe_allow_html=True)
 
     try:
         sys = load_system()
         sys_loaded = True
     except Exception as e:
-        st.error(f"오브젝트 로드 실패: {e}")
+        st.error(f"데이터 연결 실패: {e}")
         sys_loaded = False
 
     if sys_loaded:
-        st.markdown("**초개인화 대상 유저 필터링**")
-        user_options = sys["user_list"][:200]  # 다이나믹 렌더링 부하 절감을 위한 Top 200 슬라이싱
+        user_options = sys["user_list"][:200]  
         selected_user = st.selectbox(
-            "유저 가상 프로필 ID",
+            "유저 ID 선택",
             options=user_options,
-            format_func=lambda x: f"User Agent profile [{x}]",
-            help="학습 데이터셋 로그에 연동된 실제 익명화 유저 아티팩트 목록입니다."
+            format_func=lambda x: f"시뮬레이션 유저 {x}",
+            help="선택한 유저가 과거에 읽었던 논문 기록과 취향을 기반으로 맞춤 추천을 시작합니다."
         )
 
         st.markdown('<hr class="gold">', unsafe_allow_html=True)
-        st.markdown('<div class="section-label">🎚 가중치 하이퍼파라미터</div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-label">⚙️ 추천 기준 정밀 설정</div>', unsafe_allow_html=True)
 
         lambda_val = st.slider(
-            "시간 감쇠 계수 (Time Decay λ)",
+            "🕒 최신 연구 우선 반영도",
             min_value=0.0, max_value=0.3, value=0.05, step=0.01,
-            help="상승할수록 과거 논문에 강한 패널티를 부여해 신규 논문 위주로 랭킹을 방출합니다."
+            help="오른쪽으로 밀수록 최근에 발표된 트렌디한 논문을 상단에 먼저 배치하고, 왼쪽으로 밀수록 발간 시기와 상관없이 고전 논문들을 함께 보여줍니다."
         )
+
         semantic_weight = st.slider(
-            "프롬프트 의미 유사도 비중 (Semantic)",
+            "🎯 현재 검색어 집중도 (vs 과거 취향)",
             min_value=0.0, max_value=1.0, value=0.5, step=0.05,
+            help="100%에 가까울수록 내가 방금 입력한 검색 키워드 위주로 논문을 찾고, 0%에 가까울수록 검색어보다는 유저가 과거에 좋아했던 논문 성향을 중심으로 매칭합니다."
         )
+
         two_tower_weight = st.sidebar.slider(
-            "임베딩 협업 필터링 비중 (Two-Tower)",
+            "가중치 자동 분배",
             min_value=0.0, max_value=1.0, value=1.0 - semantic_weight, step=0.05,
-            disabled=True, help="의미 유사도 비율에 연동되어 100% 비율로 강제 오프셋 연동됩니다."
+            disabled=True, 
+            help="위의 '현재 검색어 집중도'를 조절하면, 전체 비중(100%) 중 남은 비율이 유저의 과거 취향 반영 비중으로 자동 계산됩니다."
         )
         
-        candidate_k = st.number_input("1차 후보 추출 풀 크기 (Recall K)", min_value=20, max_value=200, value=100, step=10)
-        final_k     = st.number_input("최종 추천 타겟 수 (Top K)", min_value=3, max_value=20, value=10, step=1)
+        candidate_k = st.number_input("1차 검색 후보 수", min_value=20, max_value=200, value=100, step=10, help="알고리즘이 전체 논문 중 1차적으로 뽑아낼 후보의 개수입니다.")
+        final_k     = st.number_input("최종 화면 노출 개수", min_value=3, max_value=20, value=10, step=1)
 
         st.markdown('<hr class="gold">', unsafe_allow_html=True)
         st.markdown(f"""
-        <div style="font-size:0.75rem; color:#6b7280; line-height:1.8;">
-        📦 인덱싱 논문 모음: <b style="color:#e8c97e">{sys['paper_map'].shape[0]:,}</b><br>
-        👥 식별 유저 히스토리: <b style="color:#e8c97e">{len(sys['user_list']):,}</b><br>
-        🖥 하드웨어 백엔드: <b style="color:#e8c97e">{str(sys['DEVICE']).upper()}</b>
+        <div style="font-size:0.75rem; color:#64748b; line-height:1.8;">
+        📦 전체 보유 논문: <b style="color:#1e3a8a">{sys['paper_map'].shape[0]:,} 편</b><br>
+        👤 등록된 유저 수: <b style="color:#1e3a8a">{len(sys['user_list']):,} 명</b><br>
+        🖥 연산 디바이스: <b style="color:#1e3a8a">{str(sys['DEVICE']).upper()}</b>
         </div>
         """, unsafe_allow_html=True)
 
 
-# ── 메인 워크스페이스 대시보드 ─────────────────────
+# ── 메인 바디 워크스페이스 ─────────────────────
 if not sys_loaded:
-    st.error("사이드바 리소스 연동 상태에 결함이 감지되었습니다. 에러 로그를 검토하세요.")
     st.stop()
 
-# 정교한 인터랙티브 모드 탭 체계 구성
-st.markdown('<div class="section-label">📋 탐색 모드 아키텍처 선택</div>', unsafe_allow_html=True)
+# 세련된 모드 카드 라벨 세팅
+st.markdown('<div class="section-label">📋 어떤 방법으로 논문을 찾으시겠어요?</div>', unsafe_allow_html=True)
 
 MODE_OPTIONS = {
     "query": {
-        "label": "MODE 1",
-        "title": "자연어 프롬프트 검색",
-        "desc": "추상적이거나 구체적인 요구 명세를 입력합니다",
+        "label": "방법 1",
+        "title": "💡 키워드로 찾기",
+        "desc": "관심 있는 연구 주제나 키워드를 입력해 관련 논문을 탐색합니다.",
     },
     "seed": {
-        "label": "MODE 2",
-        "title": "기준 논문 임베딩 확장",
-        "desc": "특정 타겟 논문의 메타데이터 구조를 역추적합니다",
+        "label": "방법 2",
+        "title": "📄 기준 논문으로 찾기",
+        "desc": "알고 있는 논문의 제목과 초록을 기반으로 가장 비슷한 논문을 확장 탐색합니다.",
     },
     "seed_query": {
-        "label": "MODE 3",
-        "title": "하이브리드 다중 결합 조건",
-        "desc": "기준 논문 조건 상태에서 가이드 쿼리로 초점을 조좁힙니다",
+        "label": "방법 3",
+        "title": "🔥 기준 논문 + 키워드 혼합",
+        "desc": "특정 논문을 기준으로 삼은 뒤, 원하는 키워드를 더해 정밀하게 검색합니다.",
     },
 }
 
@@ -563,21 +566,21 @@ for col, (mode_key, meta) in zip(cols, MODE_OPTIONS.items()):
     with col:
         active = "active" if st.session_state.input_mode == mode_key else ""
         st.markdown(f"""
-        <div class="mode-card {active}" id="card_{mode_key}">
+        <div class="mode-card {active}">
           <div class="mode-badge">{meta['label']}</div>
           <div class="mode-title">{meta['title']}</div>
           <div class="mode-desc">{meta['desc']}</div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button(f"{meta['title']} 활성화", key=f"btn_{mode_key}", use_container_width=True):
+        if st.button(f"이 방법 선택", key=f"btn_{mode_key}", use_container_width=True):
             st.session_state.input_mode = mode_key
             st.rerun()
 
 st.markdown('<hr class="gold">', unsafe_allow_html=True)
 
-# ── 동적 가변 입력 컨테이너 ───────────────────────
+# ── 가변 입력 폼 컨테이너 ───────────────────────
 mode = st.session_state.input_mode
-st.markdown(f'<div class="section-label">✏ 가변 입력 파라미터 — {MODE_OPTIONS[mode]["title"]}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="section-label">✏ 정보 입력 — {MODE_OPTIONS[mode]["title"]}</div>', unsafe_allow_html=True)
 
 user_query   = ""
 seed_title   = None
@@ -587,44 +590,49 @@ alpha, beta  = 0.7, 0.3
 valid        = False
 
 if mode == "query":
-    st.markdown('<div class="info-banner">💬 <b>인텐트 탐색</b>: 연구 타겟 인공지능 도메인 패러다임을 입력하세요. (e.g., "Retrieval-Augmented Generation evaluation strategy")</div>', unsafe_allow_html=True)
-    query_text = st.text_input("🔍 입력 프롬프트 수집기", placeholder="e.g. self-supervised learning on multimodal video framework")
+    st.markdown('<div class="info-banner">💡 <b>자연어 키워드 모드</b>: 찾고 싶은 인공지능/컴퓨터 공학 연구 분야를 영문으로 입력해 주세요. (예: "RAG evaluation matrix")</div>', unsafe_allow_html=True)
+    query_text = st.text_input("🔍 검색할 내용을 적어주세요", placeholder="e.g. computer vision self supervised learning transformer")
     user_query = query_text
     valid = bool(query_text and query_text.strip())
 
 elif mode == "seed":
-    st.markdown('<div class="info-banner">📄 <b>기준 아티팩트</b>: 소유 중이거나 타겟팅 중인 연구 자료의 제목과 초록 벡터를 공급해 주세요.</div>', unsafe_allow_html=True)
-    seed_title    = st.text_input("📄 시드 아카이브 타이틀", placeholder="e.g. Linformer: Self-Attention with Linear Complexity")
-    seed_abstract = st.text_area("📝 시드 아카이브 초록 (Abstract)", height=120, placeholder="텍스트 데이터 원문을 주입하세요...")
+    st.markdown('<div class="info-banner">📄 <b>기준 논문 확장 모드</b>: 인상 깊게 읽었거나 연구의 기준이 되는 논문의 영문 제목과 초록을 입력하세요.</div>', unsafe_allow_html=True)
+    seed_title    = st.text_input("📄 기준 논문 제목 입력", placeholder="e.g. Attention Is All You Need")
+    seed_abstract = st.text_area("📝 기준 논문 초록(Abstract) 원문 붙여넣기", height=120, placeholder="논문 사이트에서 초록을 복사해 붙여넣어 주세요...")
     user_query = seed_title
     valid = bool(seed_title and seed_title.strip())
 
-else:  # seed_query 결합 모드
-    st.markdown('<div class="info-banner">🔥 <b>크로스오버 조율</b>: 시드 논문의 추상 경향성과 유저의 직관적인 가이드라인을 백분율 비율로 하이브리드 연산합니다.</div>', unsafe_allow_html=True)
+else: 
+    st.markdown('<div class="info-banner">🔥 <b>복합 모드</b>: 기준 논문의 기본 맥락을 따라가면서, 유저가 원하는 키워드의 비중(%)을 조절해 검색을 수행합니다.</div>', unsafe_allow_html=True)
     c1, c2 = st.columns([1, 1])
     with c1:
-        seed_title = st.text_input("📄 시드 아카이브 타이틀", placeholder="e.g. RETHINKING ATTENTION WITH PERFORMERS")
+        seed_title = st.text_input("📄 기준 논문 제목", placeholder="e.g. RETHINKING ATTENTION WITH PERFORMERS")
     with c2:
-        query_text = st.text_input("🔍 유저 가이드라인 쿼리", placeholder="e.g. low-rank matrix approximation")
-    seed_abstract = st.text_area("📝 시드 아카이브 초록 (선택 옵션)", height=100, placeholder="공란으로 둘 경우 타이틀 중심으로 가중 연산 벡터가 매핑됩니다.")
+        query_text = st.text_input("🔍 좁혀 들어갈 추가 검색어", placeholder="e.g. efficient attention mechanism")
+    seed_abstract = st.text_area("📝 기준 논문 초록 (선택 사항)", height=100, placeholder="초록을 적어주시면 논문 매칭이 훨씬 정교해집니다.")
     ac1, ac2 = st.columns(2)
     with ac1:
-        alpha = st.slider("α (유저 프롬프트 제어 가중치)", 0.0, 1.0, 0.7, 0.05)
+        alpha = st.slider(
+            "🔍 새 검색어에 더 집중하기", 
+            min_value=0.0, max_value=1.0, value=0.7, step=0.05,
+            help="이 값을 높이면 기준 논문보다는 방금 입력창에 입력한 '추가 검색어'에 해당되는 새로운 논문들을 집중적으로 찾아옵니다."
+        )
     with ac2:
-        beta  = st.slider("β (시드 아키텍처 상속 가중치)", 0.0, 1.0, 0.3, 0.05)
+        beta  = st.slider(
+            "📄 기존 논문의 주제 유지하기", 
+            min_value=0.0, max_value=1.0, value=0.3, step=0.05,
+            help="이 값을 높이면 새로운 검색어를 입력했더라도, 원래 기준 논문이 다루던 핵심 학술 분야와 맥락을 벗어나지 않도록 합니다."
+        )
     user_query = query_text or seed_title
     valid = bool(seed_title and seed_title.strip() and query_text and query_text.strip())
 
-# ── 오케스트레이션 실행 파트 ───────────────────────
+# ── 추천 작동 엔진 작동 패널 ───────────────────────
 st.markdown("<br>", unsafe_allow_html=True)
-run_btn = st.button("🚀  초개인화 추천 파이프라인 트리거", disabled=not valid)
+run_btn = st.button("🔭  나에게 맞는 맞춤 논문 추천받기", disabled=not valid)
 
-if not valid:
-    st.markdown('<p style="color:#6b7280; font-size:0.82rem; font-style:italic;">⚠️ 검색 활성화를 유도하기 위해 필수 메타데이터 입력을 완료해 주세요.</p>', unsafe_allow_html=True)
-
-# ── 결과 피드 레이어 출력 ─────────────────────────
+# ── 결과 피드 렌더링 카드 ─────────────────────────
 if run_btn and valid:
-    with st.spinner("🔭 벡터 스페이스 스캔 및 생성형 유저 에이전트 다차원 재정렬 중..."):
+    with st.spinner("🔭 분석 엔진을 가동하여 가장 알맞은 논문을 정렬하고 있습니다..."):
         try:
             result_df = run_recommend(
                 sys=sys,
@@ -644,52 +652,56 @@ if run_btn and valid:
             )
             st.session_state["last_result"] = result_df
         except Exception as e:
-            st.error(f"파이프라인 실행 중 치명적 예외 발생: {e}")
+            st.error(f"추천 시스템 연산 중 예상치 못한 에러가 포착되었습니다: {e}")
 
 if "last_result" in st.session_state:
     result_df = st.session_state["last_result"]
     st.markdown('<hr class="gold">', unsafe_allow_html=True)
-    st.markdown(f'<div class="section-label">📑 최적 매칭 결과 피드 — {len(result_df)} 세트 스캔 완료</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-label">📑 🎉 검색 완료! 유저 맞춤형 논문 리스트 {len(result_df)}편</div>', unsafe_allow_html=True)
 
     for idx, row in result_df.iterrows():
         rank     = int(row.get("final_rank", idx + 1))
-        title    = row.get("title", "Missing Title Description")
+        
+        paper_id = str(row.get("paper_id", ""))
+        
+        title    = row.get("title", "제목이 없는 학술지 양식입니다.")
         reason   = row.get("reason", "")
         date_val = row.get("update_date", "")
         cats     = row.get("categories", "")
         score    = row.get("time_adjusted_score", 0.0)
 
-        # 타임스탬프 유연성 정제 포맷팅
         try:
             date_str = pd.to_datetime(date_val).strftime("%Y-%m-%d")
         except:
-            date_str = str(date_val)[:10] if pd.notna(date_val) else "Unknown Date"
+            date_str = str(date_val)[:10] if pd.notna(date_val) else "날짜 정보 없음"
 
-        # 카테고리 태그 칩 빌더 (결측치 방어 코드 수립)
         cat_chips = ""
         if pd.notna(cats) and str(cats).strip():
             for c in str(cats).split()[:3]:
                 cat_chips += f'<span class="meta-chip">{c}</span>'
 
+        # 카드 렌더링
         st.markdown(f"""
         <div class="result-card">
           <div class="rank-badge">#{rank}</div>
-          <div class="paper-title">{title}</div>
+          <div class="paper-title">
+            <a href="https://arxiv.org/abs/{paper_id}" target="_blank">{title}</a>
+          </div>
           <div class="paper-meta">
-            <span class="meta-chip gold">Final Score {score:.4f}</span>
-            <span class="meta-chip">📅 {date_str}</span>
+            <span class="meta-chip gold">종합 매칭 점수 {score:.4f}</span>
+            <span class="meta-chip">📅 발행일: {date_str}</span>
             {cat_chips}
           </div>
-          {"<div class='reason-label'>🔬 AI 에이전트 페르소나의 추천 근거</div><div class='reason-box'>" + reason + "</div>" if reason else ""}
+          {"<div class='reason-label'>💡 AI가 이 논문을 추천하는 이유</div><div class='reason-box'>" + reason + "</div>" if reason else ""}
         </div>
         """, unsafe_allow_html=True)
 
-    # 연구용 자산 아카이브 변환 오프라인 전송 (CSV)
+    # 엑셀 보고서 추출
     st.markdown("<br>", unsafe_allow_html=True)
     csv_data = result_df.to_csv(index=False).encode("utf-8")
     st.download_button(
-        label="📥  분석 결과 학술 레포트 엑셀 데이터(CSV) 다운로드",
+        label="📥  추천받은 논문 리스트 엑셀 데이터(CSV) 다운로드",
         data=csv_data,
-        file_name="paperlens_academic_report.csv",
+        file_name="paperlens_recommend_report.csv",
         mime="text/csv",
     )
