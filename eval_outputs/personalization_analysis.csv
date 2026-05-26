@@ -1,0 +1,7 @@
+query,method,avg_user_overlap@10,avg_profile_paper_cosine@10
+RAG evaluation for large language models,Semantic only,1.0,0.7743048971891403
+RAG evaluation for large language models,Semantic + Two-Tower,0.7622988505747127,0.7786093238989512
+self supervised learning for computer vision,Semantic only,1.0,0.7887847342093786
+self supervised learning for computer vision,Semantic + Two-Tower,0.7006896551724138,0.7903980859120687
+graph neural network recommender system,Semantic only,1.0,0.7095765896638234
+graph neural network recommender system,Semantic + Two-Tower,0.7098850574712644,0.7317635510365168
