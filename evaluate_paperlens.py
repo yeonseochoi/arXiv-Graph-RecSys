@@ -535,8 +535,7 @@ def llm_rerank_for_eval(
     top_candidates: int = 50,
 ) -> pd.DataFrame:
     """
-    Full system evaluation용 LLM reranking.
-    app.py의 Gemini reranking 로직을 evaluation용으로 맞춘 함수.
+    app.py와 동일한 Gemini reranking prompt를 evaluation용으로 사용.
     """
 
     try:
@@ -544,57 +543,59 @@ def llm_rerank_for_eval(
         from dotenv import load_dotenv
 
         load_dotenv()
-
         gemini_key = os.environ.get("GEMINI_API_KEY")
 
         if not gemini_key:
             print("[WARN] GEMINI_API_KEY가 없어 LLM reranking 없이 시스템 점수 기반 결과를 사용합니다.")
             fallback_df = ranked_df.head(final_k).copy()
             fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
-            fallback_df["reason"] = "통합 시스템 점수 기반 정렬 결과입니다."
+            fallback_df["reason"] = "통합 시스템 점수를 기반으로 추천합니다."
             fallback_df["llm_status"] = "fallback_no_api_key"
             return fallback_df
 
         genai.configure(api_key=gemini_key)
-        model_llm = genai.GenerativeModel(model_name)
+        model_llm = genai.GenerativeModel("gemini-2.5-flash")
 
         cands = ranked_df.copy()
 
         papers_info = ""
-        for _, row in cands.head(top_candidates).iterrows():
+        for rank, (_, row) in enumerate(cands.head(top_candidates).iterrows(), start=1):
             papers_info += (
-                "[Paper ID: {}]\n"
+                "[Internal Rank: {}]\n"
+                "Paper ID: {}\n"
                 "Title: {}\n"
+                "Categories: {}\n"
                 "Update Date: {}\n"
+                "Recency-adjusted Score: {:.6f}\n"
                 "---\n"
             ).format(
+                rank,
                 row.get("paper_id", ""),
                 row.get("title", ""),
+                row.get("categories", ""),
                 row.get("update_date", ""),
+                float(row.get("time_adjusted_score", row.get("final_score", 0.0))),
             )
 
-        prompt = """You are an AI Research Assistant. The user wants papers about: "{user_query}"
+        prompt = f"""
+You are an AI Research Assistant. The user wants papers about:
+"{user_query}"
 
-Here is a list of top candidate papers ranked by our internal system:
+Here is a list of candidate papers already ranked by our internal system:
 {papers_info}
 
-Select the Top {final_k} papers that best match the user's intent.
-Provide a brief 1-sentence reason WHY each paper is recommended.
-The reason MUST be written in Korean politely.
+Task:
+1. Select exactly {final_k} unique papers from the candidate list.
+2. Treat the existing internal rank and recency-adjusted score as strong prior signals.
+3. Change the order significantly only when a paper is clearly more relevant to the user's intent.
+4. Provide a polite Korean 1-sentence recommendation reason for each selected paper.
+5. Never invent a paper ID and never return the same paper ID twice.
 
-Important:
-- Consider both the user's current query and the user's historically liked papers.
-- You may change the ranking order if another candidate better matches the user's preference.
-- Select only papers from the candidate list.
-- Use the exact Paper ID from the candidate list.
-
-You MUST output the result strictly as a valid JSON array like this:
-[{{"paper_id": "1234.5678", "reason": "이 논문은 유저가 찾는 ~ 주제와 밀접하게 연관되어 있어 추천합니다."}}]
-""".format(
-            user_query=user_query,
-            papers_info=papers_info,
-            final_k=final_k,
-        )
+Output strictly as a valid JSON array:
+[
+{{"paper_id": "1234.5678", "reason": "추천 이유"}}
+]
+"""
 
         try:
             resp = model_llm.generate_content(
@@ -606,45 +607,78 @@ You MUST output the result strictly as a valid JSON array like this:
             )
 
             reranked = json.loads(resp.text)
-            results = []
+            if not isinstance(reranked, list):
+                raise ValueError("LLM response must be a JSON array.")
 
-            for rank, item in enumerate(reranked):
-                pid = str(item.get("paper_id"))
-                reason = item.get("reason")
+            results = []
+            selected_ids = set()
+
+            for item in reranked:
+                if not isinstance(item, dict):
+                    continue
+
+                pid = str(item.get("paper_id", "")).strip()
+                reason = str(item.get("reason", "")).strip()
+
+                if not pid or pid in selected_ids:
+                    continue
 
                 matched = cands[cands["paper_id"].astype(str) == pid]
+                if matched.empty:
+                    continue
 
-                if not matched.empty:
-                    r = matched.iloc[0]
+                r = matched.iloc[0]
+                results.append({
+                    "final_rank": len(results) + 1,
+                    "paper_id": pid,
+                    "title": r["title"],
+                    "reason": reason or "통합 시스템 점수를 기반으로 추천합니다.",
+                    "update_date": r["update_date"],
+                    "categories": r.get("categories", ""),
+                    "row_idx": int(r["row_idx"]),
+                    "semantic_score": r.get("semantic_score", np.nan),
+                    "two_tower_score": r.get("two_tower_score", np.nan),
+                    "final_score": r.get("final_score", np.nan),
+                    "time_adjusted_score": r.get("time_adjusted_score", np.nan),
+                    "llm_status": "success",
+                })
+                selected_ids.add(pid)
 
-                    results.append({
-                        "final_rank": rank + 1,
-                        "paper_id": pid,
-                        "title": r["title"],
-                        "reason": reason,
-                        "update_date": r["update_date"],
-                        "categories": r.get("categories", ""),
-                        "row_idx": int(r["row_idx"]),
-                        "semantic_score": r.get("semantic_score", np.nan),
-                        "two_tower_score": r.get("two_tower_score", np.nan),
-                        "final_score": r.get("final_score", np.nan),
-                        "time_adjusted_score": r.get("time_adjusted_score", np.nan),
-                        "llm_status": "success",
-                    })
+                if len(results) == final_k:
+                    break
+
+            # LLM 결과가 부족하면 기존 ranking 순서대로 보충
+            for _, r in cands.iterrows():
+                pid = str(r["paper_id"])
+                if pid in selected_ids:
+                    continue
+
+                results.append({
+                    "final_rank": len(results) + 1,
+                    "paper_id": pid,
+                    "title": r["title"],
+                    "reason": "통합 시스템 점수를 기반으로 추천합니다.",
+                    "update_date": r["update_date"],
+                    "categories": r.get("categories", ""),
+                    "row_idx": int(r["row_idx"]),
+                    "semantic_score": r.get("semantic_score", np.nan),
+                    "two_tower_score": r.get("two_tower_score", np.nan),
+                    "final_score": r.get("final_score", np.nan),
+                    "time_adjusted_score": r.get("time_adjusted_score", np.nan),
+                    "llm_status": "success_filled_with_internal_rank",
+                })
+                selected_ids.add(pid)
+
+                if len(results) == final_k:
+                    break
 
             if not results:
-                print("[WARN] LLM 결과가 candidate paper_id와 매칭되지 않아 기존 ranking을 사용합니다.")
-                fallback_df = cands.head(final_k).copy()
-                fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
-                fallback_df["reason"] = "통합 시스템 점수 기반 정렬 결과입니다."
-                fallback_df["llm_status"] = "fallback_no_matched_result"
-                return fallback_df
+                raise ValueError("No valid LLM-selected papers matched candidate list.")
 
             return pd.DataFrame(results).head(final_k)
 
         except Exception as e:
             print(f"[WARN] AI 재정렬 프로세스 일시 지연: {e}")
-
             fallback_df = cands.head(final_k).copy()
             fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
             fallback_df["reason"] = "네트워크 지연으로 인해 시스템 알고리즘 추천 스코어 기반으로 제공합니다."
@@ -653,7 +687,6 @@ You MUST output the result strictly as a valid JSON array like this:
 
     except Exception as e:
         print(f"[WARN] Gemini 설정 또는 호출 준비 중 오류 발생: {e}")
-
         fallback_df = ranked_df.head(final_k).copy()
         fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
         fallback_df["reason"] = "네트워크 지연으로 인해 시스템 알고리즘 추천 스코어 기반으로 제공합니다."
@@ -1340,7 +1373,7 @@ def main():
 
         print(summary)
 
-    if False and args.run_llm:
+    if args.run_llm:
         print("\n[run] Full system with LLM reranking")
 
         full_summary, full_user_df, full_recs = run_full_system_with_llm(
