@@ -412,20 +412,36 @@ def run_recommend(sys, user_id, input_type, user_query, seed_title, seed_abstrac
     # 5. 생성형 LLM 재정렬 및 추천 사유 생성 (Gemini 2.5 Flash 고정)
     model_llm = genai.GenerativeModel("gemini-2.5-flash")
     papers_info = ""
-    for _, row in cands.head(50).iterrows():
-        papers_info += f"[Paper ID: {row['paper_id']}]\nTitle: {row['title']}\nUpdate Date: {row['update_date']}\n---\n"
+    for rank, (_, row) in enumerate(cands.head(50).iterrows(), start=1):
+        papers_info += (
+            f"[Internal Rank: {rank}]\n"
+            f"Paper ID: {row['paper_id']}\n"
+            f"Title: {row['title']}\n"
+            f"Categories: {row.get('categories', '')}\n"
+            f"Update Date: {row['update_date']}\n"
+            f"Recency-adjusted Score: {row['time_adjusted_score']:.6f}\n"
+            "---\n"
+        )
 
-    prompt = f"""You are an AI Research Assistant. The user wants papers about: "{user_query or query_text or seed_title}"
+    prompt = f"""
+    You are an AI Research Assistant. The user wants papers about:
+    "{user_query or query_text or seed_title}"
 
-Here is a list of top candidate papers ranked by our internal system:
-{papers_info}
+    Here is a list of candidate papers already ranked by our internal system:
+    {papers_info}
 
-Select the Top {final_k} papers that best match the user's intent.
-Provide a brief 1-sentence reason WHY each paper is recommended.
-The reason MUST be written in Korean politely.
+    Task:
+    1. Select exactly {final_k} unique papers from the candidate list.
+    2. Treat the existing internal rank and recency-adjusted score as strong prior signals.
+    3. Change the order significantly only when a paper is clearly more relevant to the user's intent.
+    4. Provide a polite Korean 1-sentence recommendation reason for each selected paper.
+    5. Never invent a paper ID and never return the same paper ID twice.
 
-You MUST output the result strictly as a valid JSON array like this:
-[{{"paper_id": "1234.5678", "reason": "이 논문은 유저가 찾는 ~ 주제와 밀접하게 연관되어 있어 추천합니다."}}]"""
+    Output strictly as a valid JSON array:
+    [
+    {{"paper_id": "1234.5678", "reason": "추천 이유"}}
+    ]
+    """
     try:
         resp = model_llm.generate_content(
             prompt,
@@ -435,27 +451,62 @@ You MUST output the result strictly as a valid JSON array like this:
             )
         )
         reranked = json.loads(resp.text)
+        if not isinstance(reranked, list):
+            raise ValueError("LLM response must be a JSON array.")
+
         results = []
-        for rank, item in enumerate(reranked):
-            pid, reason = item.get("paper_id"), item.get("reason")
-            matched = cands[cands["paper_id"] == pid]
-            if not matched.empty:
-                r = matched.iloc[0]
-                results.append({
-                    "final_rank": rank + 1, "paper_id": pid,
-                    "title": r["title"], "reason": reason,
-                    "update_date": r["update_date"],
-                    "categories": r.get("categories", ""),
-                    "time_adjusted_score": r["time_adjusted_score"],
-                })
-        
-        if not results:
-            fallback_df = cands.head(final_k).copy()
-            fallback_df["final_rank"] = range(1, len(fallback_df) + 1)
-            fallback_df["reason"] = "통합 시스템 점수 기반 정렬 결과입니다."
-            return fallback_df
-            
-        return pd.DataFrame(results).head(final_k)
+        selected_ids = set()
+
+        for item in reranked:
+            if not isinstance(item, dict):
+                continue
+
+            pid = str(item.get("paper_id", "")).strip()
+            reason = str(item.get("reason", "")).strip()
+
+            if not pid or pid in selected_ids:
+                continue
+
+            matched = cands[cands["paper_id"].astype(str) == pid]
+            if matched.empty:
+                continue
+
+            r = matched.iloc[0]
+            results.append({
+                "final_rank": len(results) + 1,
+                "paper_id": pid,
+                "title": r["title"],
+                "reason": reason or "통합 시스템 점수를 기반으로 추천합니다.",
+                "update_date": r["update_date"],
+                "categories": r.get("categories", ""),
+                "time_adjusted_score": r["time_adjusted_score"],
+            })
+            selected_ids.add(pid)
+
+            if len(results) == final_k:
+                break
+
+        # LLM 결과가 부족하면 기존 ranking 순서대로 보충
+        for _, r in cands.iterrows():
+            pid = str(r["paper_id"])
+            if pid in selected_ids:
+                continue
+
+            results.append({
+                "final_rank": len(results) + 1,
+                "paper_id": pid,
+                "title": r["title"],
+                "reason": "통합 시스템 점수를 기반으로 추천합니다.",
+                "update_date": r["update_date"],
+                "categories": r.get("categories", ""),
+                "time_adjusted_score": r["time_adjusted_score"],
+            })
+            selected_ids.add(pid)
+
+            if len(results) == final_k:
+                break
+
+        return pd.DataFrame(results)
         
     except Exception as e:
         st.warning(f"AI 재정렬 프로세스 일시 지연: {e}")
