@@ -554,7 +554,7 @@ with st.sidebar:
 
         lambda_val = st.slider(
             "🕒 최신 연구 우선 반영도",
-            min_value=0.0, max_value=0.3, value=0.05, step=0.01,
+            min_value=0.0, max_value=0.3, value=0.01, step=0.01,
             help="오른쪽으로 밀수록 최근에 발표된 트렌디한 논문을 상단에 먼저 배치하고, 왼쪽으로 밀수록 발간 시기와 상관없이 고전 논문들을 함께 보여줍니다."
         )
 
