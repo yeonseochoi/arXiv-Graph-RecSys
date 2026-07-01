@@ -5,7 +5,7 @@
 PaperLens is a Streamlit-based paper recommendation system that helps users discover arXiv papers based on both their current research intent and past preference patterns.  
 The system combines semantic retrieval, Two-Tower personalization, recency-aware ranking, and LLM-based re-ranking to provide relevant paper recommendations with short explanations.
 
-![PaperLens Demo](assets/demo.png)
+![PaperLens Demo](assets/demo.png.png)
 ---
 
 ## Overview
